@@ -37,26 +37,26 @@ querystring = {"sort": "downloads", "page": "1", "shell_version": "all"}
 extension_names = []
 order = 0
 
-r = requests.request("GET", url, data=payload,
-                     headers=headers, params=querystring)
-total_page = int(r.json()['numpages'])
+with requests.Session() as s:
+    r = s.request("GET", url, data=payload,
+                  headers=headers, params=querystring)
+    total_page = int(r.json()['numpages'])
 
+    for page in range(1, total_page+1):
 
-for page in range(1, total_page+1):
+        print('Requesting page:', str(page), 'of', str(total_page), 'pages')
+        querystring = {"sort": "downloads",
+                       "page": "{}".format(page), "shell_version": "all"}
+        r = s.request("GET", url, data=payload,
+                      headers=headers, params=querystring)
+        j = r.json()
 
-    print('Requesting page:', str(page), 'of', str(total_page), 'pages')
-    querystring = {"sort": "downloads",
-                   "page": "{}".format(page), "shell_version": "all"}
-    r = requests.request("GET", url, data=payload,
-                         headers=headers, params=querystring)
-    j = r.json()
+        for i, extension in enumerate(j['extensions']):
+            extension_names.append(extension['name'])
+            if extension['name'] == 'EasyEffects Preset Selector':
+                order = ((page - 1) * 10) + i + 1
 
-    for i, extension in enumerate(j['extensions']):
-        extension_names.append(extension['name'])
-        if extension['name'] == 'EasyEffects Preset Selector':
-            order = ((page - 1) * 10) + i + 1
-
-    print('Done.')
+        print('Done.')
 print('Sırlama:', str(order), 'th most downloaded in',
       str(len(extension_names)), 'extensions')
 
