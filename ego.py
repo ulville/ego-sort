@@ -37,13 +37,26 @@ querystring = {"sort": "downloads", "page": "1", "shell_version": "all"}
 extension_names = []
 order = 0
 
+
+def cursor_prev_line(x):
+    print("\033[%dF" % (x))
+
+
+def cursor_hide():
+    print("\033[?25l")
+
+
+def cursor_show():
+    print("\033[?25h")
+
+
 with requests.Session() as s:
     r = s.request("GET", url, data=payload,
                   headers=headers, params=querystring)
     total_page = int(r.json()['numpages'])
 
+    cursor_hide()
     for page in range(1, total_page+1):
-
         print('Requesting page:', str(page), 'of', str(total_page), 'pages')
         querystring = {"sort": "downloads",
                        "page": "{}".format(page), "shell_version": "all"}
@@ -56,7 +69,12 @@ with requests.Session() as s:
             if extension['name'] == 'EasyEffects Preset Selector':
                 order = ((page - 1) * 10) + i + 1
 
-        print('Done.')
+        progress = (int(page * 25 / total_page) * '-') + \
+            ((25 - int(page * 25 / total_page)) * ' ')
+        print('[' + progress + ']')
+        cursor_prev_line(3)
+    cursor_show()
+
 print('Sırlama:', str(order), 'th most downloaded in',
       str(len(extension_names)), 'extensions')
 
