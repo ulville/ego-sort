@@ -42,6 +42,20 @@ headers = {
 querystring = {"shell_version": "all", "sort": "downloads", "page": "1"}
 extension_names = []
 order_list = []
+pbar_counter = 0
+pages_responded = []
+
+
+def cursor_prev_line(x):
+    print("\033[%dF" % (x))
+
+
+def cursor_hide():
+    print("\033[?25l", end="")
+
+
+def cursor_show():
+    print("\033[?25h")
 
 
 def get_total_page():
@@ -50,14 +64,32 @@ def get_total_page():
     return int(r.json()['numpages'])
 
 
+def update_progressbar(page):
+    pbar_width = 30
+    m4 = int(page * pbar_width / total_page) % 4
+    animation = '-' if m4 == 0 else '/' if m4 == 1 else '|' if m4 == 2 else '\\'
+    progress = (int(page * pbar_width / total_page) * '=') + \
+        ((page != total_page) * '>') + \
+        ((pbar_width - 1 - int(page * pbar_width / total_page)) * '-')
+    print(animation + '[' + progress + ']' + animation)
+
+
 async def log_request(request):
-    print('Requesting page:',  request.url.params.get(
-        'page'), 'of', str(total_page), 'pages')
+    page = request.url.params.get('page')
+    print('Requesting page:',  page, 'of', str(total_page), 'pages')
+    update_progressbar(int(page))
+    if int(page) != total_page:
+        cursor_prev_line(3)
 
 
 async def log_response(response):
     request = response.request
-    print('Got response of page:', request.url.params.get('page'))
+    page = request.url.params.get('page')
+    print('Got response of page:', page, 'of', str(total_page), 'pages')
+    pages_responded.append(page)
+    update_progressbar(len(pages_responded))
+    if len(pages_responded) != total_page:
+        cursor_prev_line(3)
 
 
 async def get_extensions(page):
@@ -77,9 +109,11 @@ async def get_extensions(page):
 
 async def main():
     tasks = []
+    cursor_hide()
     for page in range(1, total_page+1):
         tasks.append(get_extensions(page))
     await asyncio.gather(*tasks)
+    cursor_show()
 
 ts = time()
 
