@@ -17,7 +17,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from time import time
-import requests
+import httpx
+import asyncio
 import pandas as pd
 from datetime import datetime
 from tabulate import tabulate
@@ -25,7 +26,7 @@ from tabulate import tabulate
 LOG_PATH = "~/.local/share/ego/logs.csv"
 # LOG_PATH = "logs.csv"
 
-url = "https://extensions.gnome.org/extension-query"
+url = "https://extensions.gnome.org/extension-query/"
 payload = ""
 headers = {
     'Accept': "application/json, text/javascript, */*; q=0.01",
@@ -38,56 +39,57 @@ headers = {
     'Sec-Fetch-Mode': "cors",
     'Sec-Fetch-Site': "same-origin"
 }
-querystring = {"sort": "downloads", "page": "1", "shell_version": "all"}
+querystring = {"shell_version": "all", "sort": "downloads", "page": "1"}
 extension_names = []
-order = 0
+order_list = []
 
 
-def cursor_prev_line(x):
-    print("\033[%dF" % (x))
-
-
-def cursor_hide():
-    print("\033[?25l", end="")
-
-
-def cursor_show():
-    print("\033[?25h")
-
-
-ts = time()
-with requests.Session() as s:
-    r = s.request("GET", url, data=payload,
-                  headers=headers, params=querystring)
-    total_page = int(r.json()['numpages'])
-
-    cursor_hide()
-    for page in range(1, total_page+1):
-        print('Requesting page:', str(page), 'of', str(total_page), 'pages')
-        querystring = {"sort": "downloads",
-                       "page": "{}".format(page), "shell_version": "all"}
-        r = s.request("GET", url, data=payload,
+def get_total_page():
+    r = httpx.request("GET", url, data=payload,
                       headers=headers, params=querystring)
+    return int(r.json()['numpages'])
+
+
+async def log_request(request):
+    print('Requesting page:',  request.url.params.get(
+        'page'), 'of', str(total_page), 'pages')
+
+
+async def log_response(response):
+    request = response.request
+    print('Got response of page:', request.url.params.get('page'))
+
+
+async def get_extensions(page):
+    querystring = {"sort": "downloads",
+                   "page": "{}".format(page), "shell_version": "all"}
+    async with httpx.AsyncClient(event_hooks={'request': [log_request], 'response': [log_response]}) as client:
+        r = await client.request("GET", url, data=payload, headers=headers, params=querystring, timeout=10)
         j = r.json()
 
         for i, extension in enumerate(j['extensions']):
             extension_names.append(extension['name'])
             if extension['name'] == 'EasyEffects Preset Selector':
                 order = ((page - 1) * 10) + i + 1
+                order_list.append(order)
+        return
 
-        m4 = page % 4
-        animation = '-' if m4 == 0 else '/' if m4 == 1 else '|' if m4 == 2 else '\\'
-        pbar_width = 30
-        progress = (int(page * pbar_width / total_page) * '#') + \
-            ((pbar_width - int(page * pbar_width / total_page)) * '.')
-        print('[' + progress + ']' + animation)
-        cursor_prev_line(3)
-    cursor_show()
 
-print('Sırlama:', str(order), 'th most downloaded in',
+async def main():
+    tasks = []
+    for page in range(1, total_page+1):
+        tasks.append(get_extensions(page))
+    await asyncio.gather(*tasks)
+
+ts = time()
+
+total_page = get_total_page()
+asyncio.run(main())
+
+print('Sırlama:', str(order_list[0]), 'th most downloaded in',
       str(len(extension_names)), 'extensions')
 
-new_entry = {'date': datetime.now().date(), 'order': order,
+new_entry = {'date': datetime.now().date(), 'order': order_list[0],
              'total': len(extension_names)}
 data_from_csv = pd.read_csv(LOG_PATH).to_dict('list')
 data_from_csv.pop('Unnamed: 0')
@@ -98,5 +100,4 @@ pd.DataFrame.from_dict(data_from_csv).to_csv((LOG_PATH))
 print(tabulate(data_from_csv))
 
 te = time()
-
 print('Took: %.4f sec' % (te-ts))
