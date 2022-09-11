@@ -68,10 +68,11 @@ def update_progressbar(page):
     pbar_width = 30
     m4 = int(page * pbar_width / total_page) % 4
     animation = '-' if m4 == 0 else '/' if m4 == 1 else '|' if m4 == 2 else '\\'
-    progress = (int(page * pbar_width / total_page) * '=') + \
-        ((page != total_page) * '>') + \
-        ((pbar_width - 1 - int(page * pbar_width / total_page)) * '-')
-    print(animation + '[' + progress + ']' + animation)
+    progress = (int(page * pbar_width / total_page) * '█') + \
+        ((page != total_page) * '▒') + \
+        ((pbar_width - 1 - int(page * pbar_width / total_page)) * '░')
+    print('[' + progress + ']', ((page != total_page) * animation) +
+          ((page == total_page) * ' '), str(int((page * 100) / total_page)) + '%')
 
 
 async def log_request(request):
@@ -85,7 +86,7 @@ async def log_request(request):
 async def log_response(response):
     request = response.request
     page = request.url.params.get('page')
-    print('Got response of page:', page, 'of', str(total_page), 'pages')
+    print('Got response of page:', page, 'in', str(total_page), 'pages ')
     pages_responded.append(page)
     update_progressbar(len(pages_responded))
     if len(pages_responded) != total_page:

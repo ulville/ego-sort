@@ -78,8 +78,8 @@ with requests.Session() as s:
         m4 = page % 4
         animation = '-' if m4 == 0 else '/' if m4 == 1 else '|' if m4 == 2 else '\\'
         pbar_width = 30
-        progress = (int(page * pbar_width / total_page) * '#') + \
-            ((pbar_width - int(page * pbar_width / total_page)) * '.')
+        progress = (int(page * pbar_width / total_page) * '█') + \
+            ((pbar_width - int(page * pbar_width / total_page)) * '░')
         print('[' + progress + ']' + animation)
         cursor_prev_line(3)
     cursor_show()
