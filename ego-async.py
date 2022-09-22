@@ -25,6 +25,7 @@ from tabulate import tabulate
 
 LOG_PATH = "~/.local/share/ego/logs.csv"
 # LOG_PATH = "logs.csv"
+N_PER_PAGE = 25
 
 url = "https://extensions.gnome.org/extension-query/"
 payload = ""
@@ -39,7 +40,8 @@ headers = {
     'Sec-Fetch-Mode': "cors",
     'Sec-Fetch-Site': "same-origin"
 }
-querystring = {"shell_version": "all", "sort": "downloads", "page": "1"}
+querystring = {"shell_version": "all", "sort": "downloads",
+               "n_per_page": str(N_PER_PAGE), "page": "1"}
 extension_names = []
 order_list = []
 pbar_counter = 0
@@ -94,7 +96,7 @@ async def log_response(response):
 
 
 async def get_extensions(page):
-    querystring = {"sort": "downloads",
+    querystring = {"sort": "downloads", "n_per_page": str(N_PER_PAGE),
                    "page": "{}".format(page), "shell_version": "all"}
     async with httpx.AsyncClient(event_hooks={'request': [log_request], 'response': [log_response]}) as client:
         r = await client.request("GET", url, data=payload, headers=headers, params=querystring, timeout=10)
@@ -103,7 +105,7 @@ async def get_extensions(page):
         for i, extension in enumerate(j['extensions']):
             extension_names.append(extension['name'])
             if extension['name'] == 'EasyEffects Preset Selector':
-                order = ((page - 1) * 10) + i + 1
+                order = ((page - 1) * N_PER_PAGE) + i + 1
                 order_list.append(order)
         return
 
