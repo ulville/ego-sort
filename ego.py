@@ -24,6 +24,7 @@ from tabulate import tabulate
 
 LOG_PATH = "~/.local/share/ego/logs.csv"
 # LOG_PATH = "logs.csv"
+N_PER_PAGE = 25
 
 url = "https://extensions.gnome.org/extension-query"
 payload = ""
@@ -38,7 +39,8 @@ headers = {
     'Sec-Fetch-Mode': "cors",
     'Sec-Fetch-Site': "same-origin"
 }
-querystring = {"sort": "downloads", "page": "1", "shell_version": "all"}
+querystring = {"sort": "downloads", "page": "1",
+               "n_per_page": str(N_PER_PAGE), "shell_version": "all"}
 extension_names = []
 order = 0
 
@@ -64,7 +66,7 @@ with requests.Session() as s:
     cursor_hide()
     for page in range(1, total_page+1):
         print('Requesting page:', str(page), 'of', str(total_page), 'pages')
-        querystring = {"sort": "downloads",
+        querystring = {"sort": "downloads", "n_per_page": str(N_PER_PAGE),
                        "page": "{}".format(page), "shell_version": "all"}
         r = s.request("GET", url, data=payload,
                       headers=headers, params=querystring)
@@ -73,7 +75,7 @@ with requests.Session() as s:
         for i, extension in enumerate(j['extensions']):
             extension_names.append(extension['name'])
             if extension['name'] == 'EasyEffects Preset Selector':
-                order = ((page - 1) * 10) + i + 1
+                order = ((page - 1) * 25) + i + 1
 
         m4 = page % 4
         animation = '-' if m4 == 0 else '/' if m4 == 1 else '|' if m4 == 2 else '\\'
